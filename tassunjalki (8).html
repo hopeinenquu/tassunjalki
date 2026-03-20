@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TassunJälki — Koiraystävälliset paikat Suomessa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+:root {
+  --green: #2d5a0e;
+  --green-mid: #4a8c1c;
+  --green-light: #eef5e6;
+  --amber: #b06a10;
+  --amber-light: #fdf3e3;
+  --blue-dark: #1a4a7a;
+  --blue-light: #e8f2fc;
+  --coral-dark: #7a2a18;
+  --coral-light: #fdeee9;
+  --text: #1c1c1a;
+  --text-muted: #6b6a65;
+  --text-light: #9b9a95;
+  --border: rgba(0,0,0,0.08);
+  --border-med: rgba(0,0,0,0.14);
+  --bg: #f8f7f2;
+  --white: #ffffff;
+  --shadow-sm: 0 1px 4px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+header { background: var(--white); border-bottom: 1px solid var(--border); padding: 0 2rem; position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow-sm); }
+.header-inner { max-width: 1160px; margin: 0 auto; display: flex; align-items: center; gap: 14px; height: 64px; }
+.logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.logo-icon { width: 38px; height: 38px; background: var(--green); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.logo-icon svg { width: 22px; height: 22px; fill: #b8d98a; }
+.logo-name { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700; color: var(--text); letter-spacing: -0.3px; }
+.logo-tag { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+.header-right { margin-left: auto; display: flex; align-items: center; gap: 20px; }
+.header-stats { display: flex; gap: 20px; }
+.hstat { text-align: right; }
+.hstat-val { font-size: 20px; font-weight: 500; color: var(--green); line-height: 1; }
+.hstat-label { font-size: 11px; color: var(--text-light); margin-top: 2px; }
+
+.hero { background: var(--green); padding: 3.5rem 2rem 2.5rem; text-align: center; position: relative; overflow: hidden; }
+.hero::before { content: ''; position: absolute; inset: 0; background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/svg%3E"); }
+.hero-inner { max-width: 620px; margin: 0 auto; position: relative; }
+.hero h1 { font-family: 'Playfair Display', serif; font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 700; color: #fff; line-height: 1.2; margin-bottom: 0.75rem; letter-spacing: -0.3px; }
+.hero p { font-size: 16px; color: rgba(255,255,255,0.72); line-height: 1.6; margin-bottom: 2rem; }
+.hero-search { display: flex; gap: 8px; max-width: 480px; margin: 0 auto; background: white; border-radius: 14px; padding: 6px 6px 6px 16px; box-shadow: var(--shadow-lg); }
+.hero-search input { flex: 1; border: none; outline: none; font-size: 15px; font-family: inherit; background: transparent; color: var(--text); min-width: 0; }
+.hero-search input::placeholder { color: var(--text-light); }
+.hero-search-btn { padding: 10px 20px; background: var(--green); color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit; white-space: nowrap; }
+.hero-search-btn:hover { background: #1e3d09; }
+
+.toolbar { background: var(--white); border-bottom: 1px solid var(--border); padding: 10px 2rem; position: sticky; top: 64px; z-index: 90; }
+.toolbar-inner { max-width: 1160px; margin: 0 auto; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+select { padding: 7px 12px; border: 1px solid var(--border-med); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--bg); color: var(--text); outline: none; cursor: pointer; }
+select:focus { border-color: var(--green); }
+.view-toggle { display: flex; gap: 3px; margin-left: auto; background: var(--bg); border-radius: 9px; padding: 3px; }
+.view-btn { padding: 6px 14px; font-size: 13px; border: none; border-radius: 7px; cursor: pointer; background: transparent; color: var(--text-muted); font-family: inherit; font-weight: 500; transition: all 0.15s; }
+.view-btn.active { background: var(--white); color: var(--text); box-shadow: var(--shadow-sm); }
+
+main { max-width: 1160px; margin: 0 auto; padding: 2rem; }
+
+.loading { text-align: center; padding: 5rem; color: var(--text-muted); font-size: 14px; }
+.spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--green); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1rem; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.section-header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 1.25rem; }
+.section-title { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 500; }
+.section-count { font-size: 13px; color: var(--text-muted); }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.empty { text-align: center; padding: 4rem; color: var(--text-muted); font-size: 14px; }
+
+.card { background: var(--white); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; cursor: pointer; transition: transform 0.18s, box-shadow 0.18s; box-shadow: var(--shadow-sm); }
+.card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.card-img { height: 148px; background: var(--green-light); display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
+.card-img img { width: 100%; height: 100%; object-fit: cover; }
+.card-img-ph { opacity: 0.2; }
+.card-img-ph svg { width: 48px; height: 48px; fill: var(--green); }
+.type-pill { position: absolute; top: 10px; left: 10px; font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 20px; letter-spacing: 0.02em; }
+.pill-Kahvila { background: var(--amber-light); color: var(--amber); }
+.pill-Ravintola { background: var(--blue-light); color: var(--blue-dark); }
+.pill-Baari { background: var(--coral-light); color: var(--coral-dark); }
+.card-body { padding: 1rem 1.2rem 1.2rem; }
+.card-name { font-family: 'Playfair Display', serif; font-size: 17px; font-weight: 500; margin-bottom: 3px; line-height: 1.3; }
+.card-addr { font-size: 12px; color: var(--text-muted); margin-bottom: 10px; display: flex; align-items: center; gap: 4px; }
+.card-addr svg { width: 11px; height: 11px; fill: var(--text-light); flex-shrink: 0; }
+.stars { display: flex; gap: 1px; align-items: center; }
+.star { font-size: 13px; color: #E8A020; }
+.star.empty { color: #ddd; }
+.rating-text { font-size: 12px; color: var(--text-muted); margin-left: 5px; }
+.tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 10px; }
+.tag { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: var(--green-light); color: var(--green); font-weight: 500; }
+
+#map-view { display: none; height: calc(100vh - 148px); min-height: 480px; margin: 0 -2rem; }
+#map-view.active { display: block; }
+#map { width: 100%; height: 100%; }
+.leaflet-popup-content-wrapper { border-radius: 12px; box-shadow: var(--shadow-lg); }
+.leaflet-popup-content { margin: 14px 16px; font-family: 'DM Sans', sans-serif; min-width: 170px; }
+.popup-name { font-family: 'Playfair Display', serif; font-size: 15px; font-weight: 500; margin-bottom: 2px; }
+.popup-addr { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; }
+.popup-btn { font-size: 12px; padding: 5px 12px; background: var(--green); color: white; border: none; border-radius: 8px; cursor: pointer; font-family: inherit; font-weight: 500; }
+
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; align-items: center; justify-content: center; padding: 1rem; backdrop-filter: blur(4px); }
+.modal-overlay.open { display: flex; }
+.modal { background: var(--white); border-radius: 20px; width: 100%; max-width: 540px; max-height: 90vh; overflow-y: auto; position: relative; box-shadow: var(--shadow-lg); }
+.modal-img { height: 210px; background: var(--green-light); border-radius: 20px 20px 0 0; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.modal-img img { width: 100%; height: 100%; object-fit: cover; }
+.modal-img-ph svg { width: 64px; height: 64px; fill: var(--green); opacity: 0.18; }
+.modal-body { padding: 1.5rem 1.75rem 2rem; }
+.modal-close { position: absolute; top: 1rem; right: 1rem; background: rgba(255,255,255,0.92); border: 1px solid var(--border); border-radius: 50%; width: 32px; height: 32px; cursor: pointer; font-size: 15px; color: var(--text-muted); display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-sm); }
+.modal-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.modal-name { font-family: 'Playfair Display', serif; font-size: 26px; font-weight: 700; margin-bottom: 4px; letter-spacing: -0.3px; line-height: 1.2; }
+.modal-addr { font-size: 13px; color: var(--text-muted); margin-bottom: 14px; display: flex; align-items: center; gap: 5px; }
+.modal-addr svg { width: 13px; height: 13px; fill: var(--text-light); }
+.modal-desc { font-size: 14px; line-height: 1.75; color: var(--text-muted); }
+.modal-divider { border: none; border-top: 1px solid var(--border); margin: 1.25rem 0; }
+
+.error-box { background: var(--coral-light); border: 1px solid #f0a090; border-radius: 12px; padding: 1.5rem; margin: 2rem 0; }
+.error-box h3 { color: var(--coral-dark); margin-bottom: 6px; }
+.error-box p { font-size: 14px; color: #6a2010; line-height: 1.6; }
+.error-box a { color: var(--coral-dark); font-weight: 500; }
+.setup-box { background: var(--white); border: 1px solid var(--border); border-radius: 16px; padding: 2.5rem; margin: 2rem 0; max-width: 580px; box-shadow: var(--shadow-sm); }
+.setup-box h2 { font-family: 'Playfair Display', serif; font-size: 22px; margin-bottom: 1.25rem; }
+.setup-steps { display: flex; flex-direction: column; gap: 14px; }
+.setup-step { display: flex; gap: 14px; align-items: flex-start; }
+.step-num { width: 28px; height: 28px; border-radius: 50%; background: var(--green-light); color: var(--green); font-size: 13px; font-weight: 500; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+.setup-step p { font-size: 14px; line-height: 1.65; color: var(--text-muted); }
+.setup-step code { background: var(--bg); padding: 1px 6px; border-radius: 4px; font-size: 12px; color: var(--text); border: 1px solid var(--border); }
+.url-form { display: flex; gap: 8px; margin-top: 1.75rem; }
+.url-form input { flex: 1; padding: 10px 14px; border: 1px solid var(--border-med); border-radius: 10px; font-size: 14px; font-family: inherit; outline: none; color: var(--text); }
+.url-form input:focus { border-color: var(--green); }
+.btn-green { padding: 10px 22px; background: var(--green); color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit; white-space: nowrap; }
+.btn-green:hover { background: #1e3d09; }
+
+@media (max-width: 600px) {
+  .hero { padding: 2.5rem 1rem 2rem; }
+  main { padding: 1.25rem; }
+  .toolbar { padding: 10px 1rem; }
+  header { padding: 0 1rem; }
+  .grid { grid-template-columns: 1fr; }
+  .header-stats { display: none; }
+  #map-view { margin: 0 -1.25rem; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <a class="logo" href="#">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24"><path d="M4.5 10.5c.83 0 1.5-.67 1.5-1.5S5.33 7.5 4.5 7.5 3 8.17 3 9s.67 1.5 1.5 1.5zm3-3C8.33 7.5 9 6.83 9 6s-.67-1.5-1.5-1.5S6 5.17 6 6s.67 1.5 1.5 1.5zm7 0c.83 0 1.5-.67 1.5-1.5S15.33 4.5 14.5 4.5 13 5.17 13 6s.67 1.5 1.5 1.5zm3 3c.83 0 1.5-.67 1.5-1.5S18.33 7.5 17.5 7.5 16 8.17 16 9s.67 1.5 1.5 1.5zm-5 1.5c-2.76 0-5 2.24-5 5v1.5c0 .28.22.5.5.5h.5v1c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-1h.5c.28 0 .5-.22.5-.5V17c0-2.76-2.24-5-5-5z"/></svg>
+      </div>
+      <div>
+        <div class="logo-name">TassunJälki</div>
+        <div class="logo-tag">Koiraystävälliset paikat</div>
+      </div>
+    </a>
+    <div class="header-right">
+      <div class="header-stats" id="header-stats" style="display:none">
+        <div class="hstat"><div class="hstat-val" id="stat-count">0</div><div class="hstat-label">paikkaa</div></div>
+        <div class="hstat"><div class="hstat-val" id="stat-cities">0</div><div class="hstat-label">kaupunkia</div></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section class="hero" id="hero">
+  <div class="hero-inner">
+    <h1>Löydä koiraystävälliset paikat läheltäsi</h1>
+    <p>Hakemisto ravintoloista, kahviloista ja baareista jotka toivottavat koirasi tervetulleeksi.</p>
+    <div class="hero-search">
+      <input type="text" id="hero-search" placeholder="Hae kaupunkia tai paikan nimeä..." oninput="onHeroSearch(this.value)">
+      <button class="hero-search-btn">Hae</button>
+    </div>
+  </div>
+</section>
+
+<div class="toolbar" id="toolbar" style="display:none">
+  <div class="toolbar-inner">
+    <select id="type-filter" onchange="render()">
+      <option value="">Kaikki tyypit</option>
+      <option value="Kahvila">Kahvila</option>
+      <option value="Ravintola">Ravintola</option>
+      <option value="Baari">Baari</option>
+    </select>
+    <select id="city-filter" onchange="render()">
+      <option value="">Kaikki kaupungit</option>
+    </select>
+    <div class="view-toggle">
+      <button class="view-btn active" id="btn-lista" onclick="setView('lista')">Lista</button>
+      <button class="view-btn" id="btn-kartta" onclick="setView('kartta')">Kartta</button>
+    </div>
+  </div>
+</div>
+
+<main>
+  <div class="loading" id="loading"><div class="spinner"></div>Ladataan paikkoja...</div>
+  <div id="setup-view" style="display:none">
+    <div class="setup-box">
+      <h2>Yhdistä Google Sheets</h2>
+      <div class="setup-steps">
+        <div class="setup-step"><div class="step-num">1</div><p>Google Sheet sarakkeilla: <code>Nimi</code> <code>Tyyppi</code> <code>Kaupunki</code> <code>Osoite</code> <code>Kuvaus</code> <code>Tagit</code> <code>Arvosana</code> <code>Lat</code> <code>Lng</code></p></div>
+        <div class="setup-step"><div class="step-num">2</div><p>Julkaise Apps Script ja liitä URL alle.</p></div>
+      </div>
+      <div class="url-form">
+        <input type="text" id="sheet-url" placeholder="https://script.google.com/macros/s/.../exec">
+        <button class="btn-green" onclick="connectSheet()">Yhdistä</button>
+      </div>
+    </div>
+  </div>
+  <div id="error-view" style="display:none"></div>
+  <div id="grid-view" style="display:none">
+    <div class="section-header">
+      <span class="section-title">Paikat</span>
+      <span class="section-count" id="result-count"></span>
+    </div>
+    <div class="grid" id="grid"></div>
+    <div class="empty" id="empty" style="display:none">Ei hakutuloksia.</div>
+  </div>
+  <div id="map-view"><div id="map"></div></div>
+</main>
+
+<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'tassunjalki_sheet_url';
+const HARDCODED_URL = 'https://script.google.com/macros/s/AKfycbyIQuNejR1Dd6b7_95SsgbvAYXtzkhmSBGPVEw6tc1A3XswHig0fx2HSUqnf1pV9lAN/exec';
+let allPlaces = [];
+let searchQuery = '';
+
+const pinSVG = `<svg viewBox="0 0 24 24"><path d="M4.5 10.5c.83 0 1.5-.67 1.5-1.5S5.33 7.5 4.5 7.5 3 8.17 3 9s.67 1.5 1.5 1.5zm3-3C8.33 7.5 9 6.83 9 6s-.67-1.5-1.5-1.5S6 5.17 6 6s.67 1.5 1.5 1.5zm7 0c.83 0 1.5-.67 1.5-1.5S15.33 4.5 14.5 4.5 13 5.17 13 6s.67 1.5 1.5 1.5zm3 3c.83 0 1.5-.67 1.5-1.5S18.33 7.5 17.5 7.5 16 8.17 16 9s.67 1.5 1.5 1.5zm-5 1.5c-2.76 0-5 2.24-5 5v1.5c0 .28.22.5.5.5h.5v1c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-1h.5c.28 0 .5-.22.5-.5V17c0-2.76-2.24-5-5-5z"/></svg>`;
+const locSVG = `<svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>`;
+
+function stars(n, total=5) {
+  const r = Math.round(parseFloat(n)||0);
+  return Array.from({length:total},(_,i)=>`<span class="star${i<r?'':' empty'}">★</span>`).join('');
+}
+
+function parseJSON(json) {
+  return json.map(row => ({
+    nimi:     String(row['Nimi']||''),
+    tyyppi:   String(row['Tyyppi']||''),
+    kaupunki: String(row['Kaupunki']||''),
+    osoite:   String(row['Osoite']||''),
+    kuvaus:   String(row['Kuvaus']||''),
+    kuva:     String(row['Kuva']||''),
+    tagit:    row['Tagit'] ? String(row['Tagit']).split(';').map(t=>t.trim()).filter(Boolean) : [],
+    arvosana: parseFloat(row['Arvosana'])||0,
+    lat:      row['Lat']||'',
+    lng:      row['Lng']||'',
+  })).filter(p=>p.nimi);
+}
+
+function onHeroSearch(v) { searchQuery=v; render(); }
+
+function updateCityFilter() {
+  const cities=[...new Set(allPlaces.map(p=>p.kaupunki))].filter(Boolean).sort();
+  const sel=document.getElementById('city-filter'), cur=sel.value;
+  sel.innerHTML='<option value="">Kaikki kaupungit</option>'+cities.map(c=>`<option${c===cur?' selected':''}>${c}</option>`).join('');
+}
+
+function getFiltered() {
+  const q=searchQuery.toLowerCase(), type=document.getElementById('type-filter').value, city=document.getElementById('city-filter').value;
+  return allPlaces.filter(p=>
+    (!q||p.nimi.toLowerCase().includes(q)||p.kaupunki.toLowerCase().includes(q)||p.kuvaus.toLowerCase().includes(q))&&
+    (!type||p.tyyppi===type)&&(!city||p.kaupunki===city));
+}
+
+function imgBlock(p, h, cls) {
+  if (p.kuva) return `<img src="${p.kuva}" alt="${p.nimi}" style="width:100%;height:${h}px;object-fit:cover">`;
+  return `<div class="${cls}">${pinSVG}</div>`;
+}
+
+function safeData(p) { return JSON.stringify(p).replace(/"/g,'&quot;'); }
+
+function render() {
+  const filtered=getFiltered(), grid=document.getElementById('grid'), empty=document.getElementById('empty');
+  document.getElementById('stat-count').textContent=allPlaces.length;
+  document.getElementById('stat-cities').textContent=[...new Set(allPlaces.map(p=>p.kaupunki))].length;
+  const rc=document.getElementById('result-count'); if(rc) rc.textContent=filtered.length+' paikkaa';
+
+  if (!filtered.length) { grid.innerHTML=''; empty.style.display='block'; }
+  else {
+    empty.style.display='none';
+    grid.innerHTML=filtered.map(p=>`
+      <div class="card" onclick="openModal('${safeData(p)}')">
+        <div class="card-img">${imgBlock(p,148,'card-img-ph')}
+          <span class="type-pill pill-${p.tyyppi}">${p.tyyppi}</span>
+        </div>
+        <div class="card-body">
+          <div class="card-name">${p.nimi}</div>
+          <div class="card-addr">${locSVG}${p.kaupunki}${p.osoite?' · '+p.osoite:''}</div>
+          <div class="stars">${stars(p.arvosana)}<span class="rating-text">${p.arvosana>0?p.arvosana.toFixed(1):'—'}</span></div>
+          <div class="tags">${p.tagit.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+        </div>
+      </div>`).join('');
+  }
+  if (typeof map!=='undefined'&&map) updateMarkers();
+}
+
+function openModal(d) {
+  const p=JSON.parse(d.replace(/&quot;/g,'"'));
+  document.getElementById('modal-content').innerHTML=`
+    <div class="modal-img">${p.kuva?`<img src="${p.kuva}" alt="${p.nimi}">`:`<div class="modal-img-ph">${pinSVG}</div>`}</div>
+    <div class="modal-body">
+      <div class="modal-badges"><span class="type-pill pill-${p.tyyppi}">${p.tyyppi}</span>${p.tagit.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+      <div class="modal-name">${p.nimi}</div>
+      <div class="modal-addr">${locSVG}${p.kaupunki}${p.osoite?' · '+p.osoite:''}</div>
+      <div class="stars" style="margin-bottom:14px">${stars(p.arvosana)}<span class="rating-text" style="font-size:13px">${p.arvosana>0?p.arvosana.toFixed(1)+' / 5':'Ei arvosteluja'}</span></div>
+      ${p.kuvaus?`<hr class="modal-divider"><p class="modal-desc">${p.kuvaus}</p>`:''}
+    </div>`;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+
+async function loadSheet(url) {
+  ['loading','setup-view','grid-view','error-view'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; });
+  document.getElementById('loading').style.display='block';
+  try {
+    const res=await fetch(url,{redirect:'follow'});
+    if (!res.ok) throw new Error('Virhe haussa: '+res.status);
+    const json=await res.json();
+    const places=parseJSON(json);
+    if (!places.length) throw new Error('Sheettistä ei löytynyt tietoja. Tarkista sarakkeiden nimet.');
+    allPlaces=places;
+    localStorage.setItem(STORAGE_KEY,url);
+    document.getElementById('loading').style.display='none';
+    document.getElementById('toolbar').style.display='block';
+    document.getElementById('header-stats').style.display='flex';
+    document.getElementById('grid-view').style.display='block';
+    updateCityFilter(); render();
+  } catch(err) {
+    document.getElementById('loading').style.display='none';
+    document.getElementById('error-view').style.display='block';
+    document.getElementById('error-view').innerHTML=`<div class="error-box"><h3>Yhteysvirhe</h3><p>${err.message}</p><p style="margin-top:8px"><a href="javascript:void(0)" onclick="showSetup()">Yritä uudelleen</a></p></div>`;
+  }
+}
+
+function connectSheet() { const url=document.getElementById('sheet-url').value.trim(); if(url) loadSheet(url); }
+function showSetup() { document.getElementById('setup-view').style.display='block'; ['error-view','grid-view','loading'].forEach(id=>{ document.getElementById(id).style.display='none'; }); }
+
+loadSheet(HARDCODED_URL);
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+</script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+let map=null, markers=[], currentView='lista';
+
+function setView(view) {
+  currentView=view;
+  document.getElementById('btn-lista').classList.toggle('active',view==='lista');
+  document.getElementById('btn-kartta').classList.toggle('active',view==='kartta');
+  document.getElementById('grid-view').style.display=view==='lista'?'block':'none';
+  document.getElementById('map-view').classList.toggle('active',view==='kartta');
+  document.getElementById('hero').style.display=view==='lista'?'block':'none';
+  if (view==='kartta') { if(!map) initMap(); else { updateMarkers(); map.invalidateSize(); } }
+}
+
+function makeIcon() {
+  return L.divIcon({className:'',html:`<div style="width:26px;height:26px;background:#2d5a0e;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.25)"></div>`,iconSize:[26,26],iconAnchor:[13,26],popupAnchor:[0,-28]});
+}
+
+function initMap() {
+  map=L.map('map').setView([64.9,26.0],6);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map);
+  const bounds=[];
+  getFiltered().forEach(p=>{
+    const lat=parseFloat(p.lat),lng=parseFloat(p.lng); if(!lat||!lng) return;
+    bounds.push([lat,lng]);
+    const m=L.marker([lat,lng],{icon:makeIcon()}).addTo(map);
+    m.bindPopup(`<div class="popup-name">${p.nimi}</div><div class="popup-addr">${p.kaupunki}${p.osoite?' · '+p.osoite:''}</div><div style="margin-bottom:8px">${stars(p.arvosana)}</div><button class="popup-btn" onclick="openModal('${safeData(p)}')">Lue lisää</button>`);
+    markers.push(m);
+  });
+  if (bounds.length>0) map.fitBounds(bounds,{padding:[40,40]});
+}
+
+function updateMarkers() {
+  markers.forEach(m=>map.removeLayer(m)); markers=[];
+  getFiltered().forEach(p=>{
+    const lat=parseFloat(p.lat),lng=parseFloat(p.lng); if(!lat||!lng) return;
+    const m=L.marker([lat,lng],{icon:makeIcon()}).addTo(map);
+    m.bindPopup(`<div class="popup-name">${p.nimi}</div><div class="popup-addr">${p.kaupunki}${p.osoite?' · '+p.osoite:''}</div><div style="margin-bottom:8px">${stars(p.arvosana)}</div><button class="popup-btn" onclick="openModal('${safeData(p)}')">Lue lisää</button>`);
+    markers.push(m);
+  });
+}
+</script>
+</body>
+</html>
